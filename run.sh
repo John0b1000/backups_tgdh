@@ -29,7 +29,7 @@ done
 
 # run the TGDH driver program
 #
-sleep 3
+sleep 1.5
 python3 code/driver.py -s $1 -i $2
 
 # kill the listening process in the background
