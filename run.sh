@@ -3,6 +3,10 @@
 # file: run.sh
 #
 
+# sources: 
+# https://stackoverflow.com/questions/40652793/how-to-kill-python-script-with-bash-script
+#
+
 # description: this file runs the TGDH communication protocol
 #
 
