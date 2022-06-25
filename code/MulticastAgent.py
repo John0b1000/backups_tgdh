@@ -9,6 +9,9 @@
 import socket
 import struct
 
+# class: MulticastAgent
+#
+
 class MulticastAgent:
 
     # constructor
@@ -52,16 +55,24 @@ class MulticastAgent:
         print("Receiving messages multicast to group {0}".format(self.bind_group))
         while True:
 
-            # write the data to a file
+            # write the data to a file based on what was received
             #
             data = self.sock.recv(10240)
             parts = data.decode().split('/')
-            if not (parts[1] in self.key_data):
-                self.key_data[parts[1]] = parts[2]
-                f = open("code/files/keys.txt", 'a', encoding='utf8')
-                msg_contents = parts[1] + '/' + self.key_data[parts[1]] + '\n'
+            if parts[1] == 'join':
+                f = open("code/files/events.txt", 'w', encoding='utf8')
+                msg_contents = msg_contents = parts[1] + '/' + parts[2] + '\n'
                 f.write(msg_contents)
                 f.close()
+            elif parts[1] == 'leave':
+                pass
+            else:
+                if not (parts[1] in self.key_data):
+                    self.key_data[parts[1]] = parts[2]
+                    f = open("code/files/keys.txt", 'a', encoding='utf8')
+                    msg_contents = parts[1] + '/' + self.key_data[parts[1]] + '\n'
+                    f.write(msg_contents)
+                    f.close()
 
     #
     # end method: recv
@@ -95,3 +106,6 @@ class MulticastAgent:
 
 #
 # end class: MulticastAgent
+
+#
+# end file: MulticastAgent.py

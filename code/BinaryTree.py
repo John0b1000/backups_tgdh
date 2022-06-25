@@ -7,14 +7,16 @@
 # import modules
 #
 from DataNode import DataNode
-from functs import fread_config, fread_keys
+from functs import fread_config, fread_keys, clear_file
 from MulticastAgent import MulticastAgent
+from TCPAgent import TCPAgent
 from anytree.exporter import DotExporter
 from anytree import RenderTree
 from anytree import search
 from anytree import PreOrderIter
 import math
 import itertools
+from copy import deepcopy
 
 # class: BinaryTree
 #
@@ -37,6 +39,7 @@ class BinaryTree:
         self.root = DataNode() # root of the tree
         self.RefreshPath = None  # the path of keys that need to be updated after a join or leave
         self.mca = self.EstablishMulticast()  # a multicasting object used to send messages
+        self.ip_addr_send = None  # the ip address to send the serial object when sponsor
 
         # build an initial tree and print it
         #
@@ -232,12 +235,15 @@ class BinaryTree:
             print("Receiving via multicast ...")
             node.bKey = self.GetKey(node.name)
             (print("\tBlind key: {0}\n\tFrom node: {1}".format(node.bKey, node.name)))
-            #node.bKey = input("Enter the blind key of {0}: ".format(node.name))
             print("---------------//---------------")
             key_path[i+1].key = pow(int(node.bKey), key_path[i].key, DataNode.p)
             if key_path[i+1].ntype != 'root':
                 key_path[i+1].GenBlindKey()
                 self.SendKey(key_path[i+1])
+
+        # clear the keys file now that they are all in memory
+        #
+        clear_file("code/files/keys.txt")
 
     #
     # end method: InitialCalculateGroupKey
@@ -379,14 +385,22 @@ class BinaryTree:
         # the sponsor must send out the updated blind keys
         #
 
-        # if this is a join, get the blind key from the new member
+        # if this is a join, send the serialized tree and get the blind key from the new member
         #
         if join:
             print("---------------//---------------")
+            print("Serializing and sending tree ...")
+            tcpa = TCPAgent(port=9000, server=self.ip_addr_send)
+            send_tree = deepcopy(self)
+            send_tree.key = None
+            send_tree.bKey = None
+            tcpa.ClientInit(send_tree)
+            print("---------------//---------------")
             print("Receiving via multicast ...")
-            node.bKey = int(input("Enter new member blind key: "))
+            node.bKey = self.GetKey(node.name)
             print("---------------//---------------")
             self.SponsorCalculateSendGroupKey()
+            clear_file("code/files/events.txt")
         else:
 
             # otherwise, just calculate and send
@@ -407,7 +421,7 @@ class BinaryTree:
         for node in our_path.intersection(new_path):
             print("---------------//---------------")
             print("Receiving via multicast ...")
-            node.bKey = int(input("Enter the blind key of {0}: ".format(node.name)))
+            node.bKey = self.GetKey(node.name)
             print("---------------//---------------")
 
     #
@@ -426,7 +440,7 @@ class BinaryTree:
 
     # method: TreeRefresh
     #
-    def TreeRefresh(self, event='u'):
+    def TreeRefresh(self, event='u', ip_addr_send=None):
 
         # refresh appropriate tree attributes
         #
@@ -442,6 +456,7 @@ class BinaryTree:
                 print("Entering sponsor protocol ...")
                 print("---------------//---------------")
                 if event == 'j':
+                    self.ip_addr_send = ip_addr_send
                     self.SponsorCommProtocol(node=self.me.GetSibling(), join=True)
                 else:
                     self.SponsorCommProtocol(join=False)
@@ -451,7 +466,7 @@ class BinaryTree:
 
     # method: JoinEvent
     #
-    def JoinEvent(self):
+    def JoinEvent(self, ip_addr_send=None):
 
         # prepare the tree
         #
@@ -477,7 +492,7 @@ class BinaryTree:
 
         # refresh the tree
         #
-        self.TreeRefresh(event='j')
+        self.TreeRefresh(event='j', ip_addr_send=ip_addr_send)
 
     #
     # end method: JoinEvent
@@ -513,6 +528,33 @@ class BinaryTree:
 
     #
     # end method: LeaveEvent
+
+    # method: NewMemberProtocol
+    #
+    def NewMemberProtocol(self):
+
+        # find me
+        #
+        self.uid = self.nextmemb-1
+        self.FindMe
+
+        # generate keys and multicast blind key
+        #
+        print("---------------//---------------")
+        print("Generating new keys ...")
+        self.KeyGeneration()
+        print("---------------//---------------")
+        
+        # get the blind key from the sponsor
+        #
+        self.me.GetSibling().bKey = self.GetKey(self.me.GetSibling().name)
+
+        # calculate the group key
+        #
+        self.CalculateGroupKey()
+
+    #
+    # end method: NewMemberProtocol
 
     # method: TreeExport
     #
