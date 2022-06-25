@@ -32,7 +32,7 @@ done
 sleep 1.5
 python3 code/driver.py -s $1 -i $2
 
-# kill the listening process in the background (send a ctrl-c signal)
+# kill the processes (send a ctrl-c signal)
 #
 pkill -SIGINT -f ListeningDaemon.py
 pkill -SIGINT -f driver.py
