@@ -7,9 +7,11 @@
 # import modules
 #
 import sys
+import os
 import argparse
 from MulticastAgent import MulticastAgent
 from TCPAgent import TCPAgent
+from time import sleep
 
 # function: cmdl_parse
 #
@@ -21,7 +23,6 @@ def cmdl_parse(alist):
     parser.add_argument('-s', metavar='isize', type=int, help='the initial size of the group')        
     parser.add_argument('-i', metavar='uid', type=int, help='unique member id')
     parser.add_argument('-j', metavar='join', default=False, help='indicate a joining member')
-    parser.add_argument('-l', metavar='leave', default=False, help='indicate a leaving member')
     parser.add_argument('-a', metavar='ip_addr', help='IP address of current node')
     if len(alist) == 0:
         print("**> Error: Insufficient number of arguments specified.")
@@ -32,7 +33,7 @@ def cmdl_parse(alist):
 
     # return in a tuple
     #
-    return(args.s, args.i, args.j, args.l, args.a)
+    return(args.s, args.i, args.j, args.a)
 
 #
 # end function: cmdl_parse
@@ -145,7 +146,7 @@ def fread_events(fp):
         elif parts[0] == 'leave':
             return(2, parts[1])  # event code for leave
         else:
-            return(0)
+            return(0, None)
     
 #
 # end function: fread_events
@@ -168,7 +169,7 @@ def join_protocol(ip_addr):
 
     # multicast a join message to the group
     #
-    f = open("code/files/multicast.config", 'r', encoding='utf8')
+    f = open("multicast.config", 'r', encoding='utf8')
     mcast_params = fread_config(f)
     f.close()
     mca = MulticastAgent(groups=mcast_params['groups'], port=int(mcast_params['port']), iface=mcast_params['iface'], bind_group=mcast_params['bind_group'], mcast_group=mcast_params['mcast_group'])
@@ -187,19 +188,75 @@ def join_protocol(ip_addr):
 #
 # end function: join_protocol
 
+# function: leave_protocol
+#
+def leave_protocol(btree):
+
+    # multicast a leave message to the group
+    #
+    print("---------------//---------------")
+    print("Sending via multicast:\n\tLeaving ... \n\tMember: {0}".format(btree.uid))
+    msg = '/leave/' + str(btree.uid)
+    btree.mca.send(msg)
+    print("---------------//---------------")
+
+#
+# end function: join_protocol
+
 # function: event_check
 #
 def event_check():
 
     # read the events file and determine if a join or leave has occurred 
     #
-    f = open("code/files/events.txt", 'r', encoding='utf8')
-    (event_code, ip_addr_send) = fread_events()
-    f.close()
-    return(event_code, ip_addr_send)
+    if not (os.stat("/files/events.txt").st_size == 0):
+        f = open("/files/events.txt", 'r', encoding='utf8')
+        (event_code, data) = fread_events(f)
+        f.close()
+        return(event_code, data)
+    else:
+        return(0, None)
 
 #
 # end function: event_check
+
+# function: forever
+#
+def forever(btree):
+
+    try:
+
+        # continually check for group membership events
+        #
+        print("Waiting for event ... ")
+        while True:
+            sleep(5)
+            (event, data) = event_check()
+            if event == 1:
+                btree.JoinEvent(data)           
+                btree.TreePrint()
+                print("Group key: {0}".format(btree.root.key))
+                clear_file("/files/events.txt")
+                clear_file("/files/keys.txt")
+                print("########################################")
+                print("Waiting for event ...")
+            elif event == 2:
+                btree.LeaveEvent(int(data))
+                btree.TreePrint()
+                print("Group key: {0}".format(btree.root.key))
+                clear_file("/files/events.txt")
+                clear_file("/files/keys.txt")
+                print("########################################")
+                print("Waiting for event ...")
+
+    except KeyboardInterrupt:
+
+        # exit gracefully
+        # 
+        print("Leaving the group ...")
+        print("Freeing resources and exiting ...")
+        leave_protocol(btree)
+        return(0)
 
 #
 # end file: functs.py

@@ -16,7 +16,7 @@ from anytree import search
 from anytree import PreOrderIter
 import math
 import itertools
-from copy import deepcopy
+from copy import copy
 
 # class: BinaryTree
 #
@@ -54,7 +54,7 @@ class BinaryTree:
 
         # set up multicast communication
         #
-        f = open("code/files/multicast.config", 'r', encoding='utf8')
+        f = open("multicast.config", 'r', encoding='utf8')
         mcast_params = fread_config(f)
         f.close()
         return(MulticastAgent(groups=mcast_params['groups'], port=int(mcast_params['port']), iface=mcast_params['iface'], bind_group=mcast_params['bind_group'], mcast_group=mcast_params['mcast_group']))
@@ -196,11 +196,16 @@ class BinaryTree:
 
         # wait for the key to be added to the file
         #
-        f = open("code/files/keys.txt", 'r', encoding='utf8')
+        f = open("/files/keys.txt", 'r', encoding='utf8')
         while True:
             data = fread_keys(f)
             if data is not None:
                 if data[0] == name:
+                    f.close()
+                    print("---------------//---------------")
+                    print("Receiving via multicast ...")
+                    (print("\tBlind key: {0}\n\tFor node: {1}".format(data[1], data[0])))
+                    print("---------------//---------------")
                     return(int(data[1]))
 
     #
@@ -231,11 +236,7 @@ class BinaryTree:
         key_path = self.me.GetKeyPath()
         co_path = self.me.GetCoPath()
         for i, node in enumerate(co_path):
-            print("---------------//---------------")
-            print("Receiving via multicast ...")
             node.bKey = self.GetKey(node.name)
-            (print("\tBlind key: {0}\n\tFrom node: {1}".format(node.bKey, node.name)))
-            print("---------------//---------------")
             key_path[i+1].key = pow(int(node.bKey), key_path[i].key, DataNode.p)
             if key_path[i+1].ntype != 'root':
                 key_path[i+1].GenBlindKey()
@@ -243,7 +244,7 @@ class BinaryTree:
 
         # clear the keys file now that they are all in memory
         #
-        clear_file("code/files/keys.txt")
+        clear_file("/files/keys.txt")
 
     #
     # end method: InitialCalculateGroupKey
@@ -256,6 +257,7 @@ class BinaryTree:
         #
         key_path = self.me.GetKeyPath()
         co_path = self.me.GetCoPath()
+        self.SendKey(self.me)
         for i, node in enumerate(co_path):
             key_path[i+1].key = pow(int(node.bKey), key_path[i].key, DataNode.p)
             if key_path[i+1].ntype != 'root':
@@ -391,16 +393,14 @@ class BinaryTree:
             print("---------------//---------------")
             print("Serializing and sending tree ...")
             tcpa = TCPAgent(port=9000, server=self.ip_addr_send)
-            send_tree = deepcopy(self)
+            send_tree = copy(self)
             send_tree.key = None
             send_tree.bKey = None
+            send_tree.mca = None
             tcpa.ClientInit(send_tree)
-            print("---------------//---------------")
-            print("Receiving via multicast ...")
             node.bKey = self.GetKey(node.name)
-            print("---------------//---------------")
             self.SponsorCalculateSendGroupKey()
-            clear_file("code/files/events.txt")
+            self.CalculateGroupKey()
         else:
 
             # otherwise, just calculate and send
@@ -419,10 +419,7 @@ class BinaryTree:
         new_path = set(self.RefreshPath)
         our_path = set(self.me.GetCoPath())
         for node in our_path.intersection(new_path):
-            print("---------------//---------------")
-            print("Receiving via multicast ...")
             node.bKey = self.GetKey(node.name)
-            print("---------------//---------------")
 
     #
     # end method: GrabUpdatedKeys
@@ -450,6 +447,7 @@ class BinaryTree:
         if event != 'u':
             if self.me.ntype != 'spon':
                 self.GrabUpdatedKeys()
+                self.CalculateGroupKey()
             else:
                 print("---------------//---------------")
                 print("I am the sponsor!")
@@ -533,10 +531,14 @@ class BinaryTree:
     #
     def NewMemberProtocol(self):
 
+        # establish a multicast connection
+        #
+        self.mca = self.EstablishMulticast()
+
         # find me
         #
         self.uid = self.nextmemb-1
-        self.FindMe
+        self.FindMe()
 
         # generate keys and multicast blind key
         #

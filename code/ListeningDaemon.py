@@ -16,13 +16,14 @@ from MulticastAgent import MulticastAgent
 #
 def main(argv):
 
-    # clear the keys.txt file
+    # clear the keys.txt file and events.txt file
     #
-    clear_file("code/files/keys.txt")
+    clear_file("/files/keys.txt")
+    clear_file("/files/events.txt")
 
     # read the configuration file and determine multicast parameters
     #
-    f = open("code/files/multicast.config", 'r', encoding='utf8')
+    f = open("multicast.config", 'r', encoding='utf8')
     mcast_params = fread_config(f)
     f.close()
 
@@ -36,7 +37,7 @@ def main(argv):
         #
         mca.recv()
 
-    except KeyboardInterrupt:
+    finally:
 
         # exit gracefully
         #

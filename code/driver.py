@@ -22,9 +22,8 @@
 # import modules
 #
 import sys
-from functs import cmdl_parse, get_instructions, join_protocol, event_check, clear_file
+from functs import cmdl_parse, get_instructions, join_protocol, clear_file, forever
 from BinaryTree import BinaryTree
-import time
 
 # function: main
 #
@@ -32,7 +31,7 @@ def main(argv):
 
     # get command line arguments
     #
-    (isize, uid, jstatus, lstatus, ip_addr) = cmdl_parse(argv[1:len(argv)])
+    (isize, uid, jstatus, ip_addr) = cmdl_parse(argv[1:len(argv)])
 
     if jstatus:
 
@@ -42,18 +41,15 @@ def main(argv):
         print("Joining the group ...")
         btree = join_protocol(ip_addr)
         btree.NewMemberProtocol()
-        clear_file("files/events.txt")
+        btree.TreePrint()
         print("Group key: {0}".format(btree.root.key))
+        clear_file("/files/events.txt")
+        clear_file("/files/keys.txt")
         print("########################################")
 
-    elif lstatus:
-
-        # initiate leave protocol
+        # check the events.txt file every few seconds
         #
-        print("########################################")
-        print("Multicasting a leave message to the group ...")
-        print("Freeing resources and exiting ...")
-        print("########################################")
+        return(forever(btree))
 
     else: 
 
@@ -66,23 +62,7 @@ def main(argv):
 
         # check the events.txt file every few seconds
         #
-        try:
-            print("Waiting for event ... ")
-            while True:
-                time.sleep(5)
-                (event, ip_addr_send) = event_check()
-                if event == 1:
-                    btree.JoinEvent(ip_addr_send)
-                    print("Group key: {0}".format(btree.root.key))
-                    print("Waiting for event ... (")
-                elif event == 2:
-                    pass
-        except KeyboardInterrupt:
-
-            # exit gracefully
-            #
-            print("Freeing resources and exiting ...")
-            return(0)  # exit gracefully
+        return(forever(btree))
 
 #
 # end function: main

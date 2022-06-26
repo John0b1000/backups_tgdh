@@ -60,20 +60,29 @@ class MulticastAgent:
             data = self.sock.recv(10240)
             parts = data.decode().split('/')
             if parts[1] == 'join':
-                f = open("code/files/events.txt", 'w', encoding='utf8')
+                f = open("/files/events.txt", 'w', encoding='utf8')
                 msg_contents = msg_contents = parts[1] + '/' + parts[2] + '\n'
                 f.write(msg_contents)
                 f.close()
             elif parts[1] == 'leave':
-                pass
+                f = open("/files/events.txt", 'w', encoding='utf8')
+                msg_contents = msg_contents = parts[1] + '/' + parts[2] + '\n'
+                f.write(msg_contents)
+                f.close()
             else:
                 if not (parts[1] in self.key_data):
                     self.key_data[parts[1]] = parts[2]
-                    f = open("code/files/keys.txt", 'a', encoding='utf8')
+                    f = open("/files/keys.txt", 'a', encoding='utf8')
                     msg_contents = parts[1] + '/' + self.key_data[parts[1]] + '\n'
                     f.write(msg_contents)
                     f.close()
-
+                elif parts[1] in self.key_data and not parts[2] == self.key_data[parts[1]]:
+                    self.key_data[parts[1]] = parts[2]
+                    f = open("/files/keys.txt", 'a', encoding='utf8')
+                    msg_contents = parts[1] + '/' + self.key_data[parts[1]] + '\n'
+                    f.write(msg_contents)
+                    f.close()
+                    
     #
     # end method: recv
 
