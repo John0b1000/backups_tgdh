@@ -185,7 +185,6 @@ class BinaryTree:
         #
         self.me.GenPrivateKey()
         self.me.GenBlindKey()
-        self.SendKey(self.me)
 
     #
     # end method: KeyGeneration
@@ -235,6 +234,7 @@ class BinaryTree:
         #
         key_path = self.me.GetKeyPath()
         co_path = self.me.GetCoPath()
+        self.SendKey(self.me)
         for i, node in enumerate(co_path):
             node.bKey = self.GetKey(node.name)
             key_path[i+1].key = pow(int(node.bKey), key_path[i].key, DataNode.p)
@@ -403,8 +403,12 @@ class BinaryTree:
             self.CalculateGroupKey()
         else:
 
-            # otherwise, just calculate and send
+            # otherwise, just calculate and send (sponsor calculates new private key)
             #
+            print("---------------//---------------")
+            print("Generating new keys ...")
+            self.KeyGeneration()
+            print("---------------//---------------")
             self.SponsorCalculateSendGroupKey()
 
     #
@@ -444,20 +448,19 @@ class BinaryTree:
         self.FindMe()
         self.RecalculateNames()
         self.TreeExport()
-        if event != 'u':
-            if self.me.ntype != 'spon':
-                self.GrabUpdatedKeys()
-                self.CalculateGroupKey()
+        if self.me.ntype != 'spon':
+            self.GrabUpdatedKeys()
+            self.CalculateGroupKey()
+        else:
+            print("---------------//---------------")
+            print("I am the sponsor!")
+            print("Entering sponsor protocol ...")
+            print("---------------//---------------")
+            if event == 'j':
+                self.ip_addr_send = ip_addr_send
+                self.SponsorCommProtocol(node=self.me.GetSibling(), join=True)
             else:
-                print("---------------//---------------")
-                print("I am the sponsor!")
-                print("Entering sponsor protocol ...")
-                print("---------------//---------------")
-                if event == 'j':
-                    self.ip_addr_send = ip_addr_send
-                    self.SponsorCommProtocol(node=self.me.GetSibling(), join=True)
-                else:
-                    self.SponsorCommProtocol(join=False)
+                self.SponsorCommProtocol(join=False)
 
     #
     # end method: TreeRefresh
@@ -508,17 +511,29 @@ class BinaryTree:
         for node in self.GetLeaves():
             if node.mid == eid:
 
-                # assign the sponsor
-                #
-                sponsor_node = list(self.WalkPreOrder(node.GetSibling()))[-1]
-                sponsor_node.SponsorAssign(join=False)
+                if node.parent.ntype == 'root':
 
-                # transfer data from the sibling node to the parent
-                # the parent node is being replaced
-                #
-                new_node = node.parent.TransferDataRemove(node.GetSibling())
+                    # the root must be relocated
+                    #
+                    new_root = node.GetSibling()
+                    new_root.MakeRoot()
+                    self.root = new_root
+                    sponsor_node = list(self.WalkPreOrder(self.root))[-1]
+                    sponsor_node.SponsorAssign(join=False)
 
-        self.RefreshPath = self.FindNode(new_node, True).GetKeyPath()
+                else:
+
+                    # assign the sponsor
+                    #
+                    sponsor_node = list(self.WalkPreOrder(node.GetSibling()))[-1]
+                    sponsor_node.SponsorAssign(join=False)
+
+                    # transfer data from the sibling node to the parent
+                    # the parent node is being replaced
+                    #
+                    node.parent.TransferDataRemove(node.GetSibling())
+
+        self.RefreshPath = self.FindNode(sponsor_node.mid, True).GetKeyPath()
 
         # refresh the tree
         #
@@ -546,6 +561,7 @@ class BinaryTree:
         print("Generating new keys ...")
         self.KeyGeneration()
         print("---------------//---------------")
+        self.SendKey(self.me)
         
         # get the blind key from the sponsor
         #

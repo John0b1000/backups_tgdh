@@ -175,13 +175,14 @@ class DataNode(NodeMixin):
     #
     # end method: NewMembAssign
 
-    # method: TransferData
+    # method: TransferDataRemove
     #
     def TransferDataRemove(self, node):
 
         # transfer data from specified node
         # this is a node replacement operation
         #
+        self.pos = node.pos
         self.ntype = node.ntype
         self.mid = node.mid
         self.rchild = node.rchild
@@ -189,10 +190,26 @@ class DataNode(NodeMixin):
         self.children = node.children
         self.key = node.key
         self.bKey = node.bKey
-        return(self.mid)
 
     #
-    # end method: TransferData
+    # end method: TransferDataRemove
+
+    # method: MakeRoot
+    #
+    def MakeRoot(self):
+
+        # make this node the root node
+        #
+        self.pos = 'NA'
+        self.ntype = 'root'
+        self.mid = None
+        self.parent = None
+        self.l = 0
+        self.v = 0
+        self.name = '<0,0>'
+
+    #
+    # end method: MakeRoot
     
     # method: PrintAttributes
     #
