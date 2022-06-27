@@ -6,6 +6,16 @@
 # description: this file allows a node to join a group
 #
 
+# enable job control
+#
+set -m
+
+# cleanup the background process
+#
+trap "pkill -2 -f ListeningDaemon.py; exit" SIGINT
+
+# signal initialization
+#
 echo "Initiating Join Protocol ..."
 
 # run the listening daemon

@@ -6,6 +6,16 @@
 # description: this file runs the TGDH communication protocol
 #
 
+# enable job control
+#
+set -m
+
+# cleanup the background process
+#
+trap "pkill -2 -f ListeningDaemon.py; exit" SIGINT
+
+# signal initialization
+#
 echo "Initializing TGDH protocol ..."
 
 # run the listening daemon
@@ -33,7 +43,6 @@ done
 #
 sleep 1.5
 python3 code/driver.py -s $1 -i $2
-
 
 #
 # end file: run.sh
